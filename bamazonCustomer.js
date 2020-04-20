@@ -28,31 +28,81 @@ function start(){
             console.log("ID: ", res[i].item_id, " |  Product: ", res[i].product_name, "  |  Department: ", res[i].department_name, "  |  Price: $", res[i].price, "  |  Quantity: ", res[i].stock_quantity)
             console.log('----------------------------------------------------------------------------------------------------')
         }
-      
-    })
-}
-
-function runSearch(){
-    inquirer.prompt({
-        name: "action",
-        type: "list",
-        message: "What is the ID of the product you'd like to buy?",
-        choices: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
-
-        ]
-    })
-    .then (function(answer) {
-        switch (answer.action) {
-            case value:
-                
-                break;
-        
-            default:
-                break;
+        console.log(" ");
+        inquirer.prompt([{
+            type: "input",
+            name: "id",
+            message: "What is the ID of the product you'd like to purchase today?",
+            validate: function(value){
+                if(isNaN(value) == false && parseInt(value) <= res.length && parseInt(value) > 0){
+                    return true;
+                } else { 
+                    return false
+                }
+            }
+        },
+        {
+            type: "input", 
+            name: "Quantity", 
+            message: "How many units would like you purchase today?",
+            validate: function(value){
+                if(isNaN(value) == false && parseInt(value) <= res.length && parseInt(value) > 0){
+                    return true;
+                } else { 
+                    return false
+                }
+            }
         }
+        ]).then(function(ans){
+            var whatToBuy = (ans.id)-1;
+            var howMuchToBuy = parseInt(ans.Quantity);
+            var grandTotal = parseFloat(((res[whatToBuy].price)*howMuchToBuy).toFixed(2));
+
+            if(res[whatToBuy].stock_quantity >= howMuchToBuy){
+                connection.query("UPDATE products SET ? WHERE ?", [
+                    {stock_quantity: (res[whatToBuy].stock_quantity - howMuchToBuy)},
+                    {item_id: ans.id}
+                ], function(err, result){
+                    if (err) throw err;
+                    console.log("Great purchase! Your total is $", grandTotal.toFixed(2), ".")
+                })
+
+                connection.query("SELECT * FROM department_name", function(err, deptRes){
+                    if (err) throw err;
+                    var index;
+                    for (var i = 0; i< deptRes.length; i++) {
+                        if(deptRes[i].department_name === res[whatToBuy].department_name){
+                            index = i
+                        }
+                    }
+                    connection.query("UPDATE department_name SET ? WHERE ?", [
+                        {TotalSales: deptRes[index].TotalSales + grandTotal},
+                        {department_name: res[whatToBuy].department_name}
+                    ], function (err, deptRes){
+                        if (err) throw err;
+                    })
+                })
+            } else {
+                console.log("There is not enough around to sell you these, sorry.")
+            }
+            notEnoughPrompt()
+        })
+
     })
 }
+function notEnoughPrompt(){
+    inquirer.prompt([{
+      type: "confirm",
+      name: "reply",
+      message: "Would you like to buy another item?"
+    }]).then(function(ans){
+      if(ans.reply){
+        start();
+      } else{
+        console.log("See you soon!");
+      }
+    });
+  }
 
 
-
-// start()
+start()
